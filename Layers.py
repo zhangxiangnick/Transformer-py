@@ -2,6 +2,21 @@ import torch
 import torch.nn as nn
 import math
 
+class LayerNorm(nn.Module):
+    """
+    Applies layer normalization to last dimension
+    """
+    def __init__(self, d):
+        super().__init__()
+        self.gamma = nn.Parameter(torch.ones(d), requires_grad=True)
+        self.beta = nn.Parameter(torch.zeros(d), requires_grad=True)
+
+    def forward(self, x):
+        mean = x.mean(-1, keepdim=True)
+        std = x.std(-1, keepdim=True)
+        return self.gamma * (x - mean) / (std + 1e-6) + self.beta
+
+
 class MultiHeadAttention(nn.Module):
     """
     Applies multi-head attentions to inputs (query, key, value)
@@ -28,8 +43,7 @@ class MultiHeadAttention(nn.Module):
     """
     
     def __init__(self, h, d_model, p):
-        super(MultiHeadAttention, self).__init__()
-        
+        super(MultiHeadAttention, self).__init__()      
         self.h = h
         self.d = d_model
         self.d_head = d_model//h
@@ -39,6 +53,7 @@ class MultiHeadAttention(nn.Module):
         self.fc_concat = nn.Linear(h*self.d_head, d_model, bias=False)
         self.sm = nn.Softmax()
         self.dropout = nn.Dropout(p)
+        self.layernorm = LayerNorm(d_model)
       
     def _prepare_proj(self, x):
         """
@@ -47,9 +62,8 @@ class MultiHeadAttention(nn.Module):
         b, l, d = x.size()
         return x.view(b, l, self.h, self.d_head).transpose(1,2).contiguous().view(b*self.h, l, self.d_head)
         
-    def forward(self, query, key, value, mask=None):
-        b = query.size(0)
-        len_query = query.size(1)
+    def forward(self, query, key, value, mask):
+        b, len_query = query.size(0), query.size(1)
         len_key = key.size(1)
         
         # project inputs to multi-heads
@@ -65,17 +79,13 @@ class MultiHeadAttention(nn.Module):
         # get dotproduct softmax attns for each head
         attns = torch.bmm(proj_query, proj_key.transpose(1,2))  # batch_size*h x len_query x len_key
         attns = attns / math.sqrt(self.d_head) 
-        if mask is not None:
-            attns = attns.view(b, self.h, len_query, len_key) 
-            attns = attns.masked_fill_(mask.unsqueeze(1).unsqueeze(1), -float('inf'))
+        attns = attns.view(b, self.h, len_query, len_key) 
+        attns = attns.masked_fill_(mask.unsqueeze(1).unsqueeze(1), -float('inf'))
         attns = self.sm(attns.view(-1, len_key)).view(b*self.h, len_query, len_key)
         
         # apply attns on value
         out = torch.bmm(attns, proj_value)      # batch_size*h x len_query x d_head
         out = out.view(b, self.h, len_query, self.d_head).transpose(1,2).contiguous() 
         out = self.fc_concat(out.view(b, len_query, self.h*self.d_head))
-        out = query + self.dropout(out) 
-        
-        # TODO: layer normalization
-        
+        out = self.layernorm(query + self.dropout(out))   
         return out
