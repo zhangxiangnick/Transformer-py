@@ -89,3 +89,38 @@ class MultiHeadAttention(nn.Module):
         out = self.fc_concat(out.view(b, len_query, self.h*self.d_head))
         out = self.layernorm(query + self.dropout(out))   
         return out
+
+class FeedForward(nn.Module):
+    """
+    Applies position-wise feed forward to inputs
+    
+    Args:
+        d_model: dimension of model 
+        d_ff:    dimension of feed forward
+        p:       dropout probabolity 
+        
+    Params:
+        fc_1: FC layer from d_model to d_ff
+        fc_2: FC layer from d_ff to d_model
+        
+    Input Shapes:
+        input: batch_size x len x d_model
+        
+    Output Shapes:
+        out: batch_size x len x d_model
+    """
+    
+    def __init__(self, d_model, d_ff, p):
+        super(FeedForward, self).__init__()
+        self.d_model = d_model
+        self.d_ff = d_ff
+        self.fc_1 = nn.Linear(d_model, d_ff)
+        self.fc_2 = nn.Linear(d_ff, d_model)
+        self.dropout = nn.Dropout(p)
+        self.layernorm = LayerNorm(d_model)
+        self.relu = nn.ReLU()
+        
+    def forward(self, input):
+        out = self.dropout(self.fc_2(self.relu(self.fc_1(input))))
+        out = self.layernorm(out + input)
+        return out
