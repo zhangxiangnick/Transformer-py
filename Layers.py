@@ -3,8 +3,11 @@ import torch.nn as nn
 import math
 
 class LayerNorm(nn.Module):
-    """
-    Applies layer normalization to last dimension
+    """Applies layer normalization to last dimension
+
+    Args:
+        d: dimension of hidden units
+
     """
     def __init__(self, d):
         super().__init__()
@@ -18,8 +21,7 @@ class LayerNorm(nn.Module):
 
 
 class MultiHeadAttention(nn.Module):
-    """
-    Applies multi-head attentions to inputs (query, key, value)
+    """Applies multi-head attentions to inputs (query, key, value)
 
     Args:
         h:       number of heads
@@ -40,6 +42,7 @@ class MultiHeadAttention(nn.Module):
         
     Outputs Shapes:
         out:   batch_size x len_query x d_model
+
     """
     
     def __init__(self, h, d_model, p):
@@ -56,8 +59,8 @@ class MultiHeadAttention(nn.Module):
         self.layernorm = LayerNorm(d_model)
       
     def _prepare_proj(self, x):
-        """
-        Reshape the projectons to apply softmax on each head
+        """Reshape the projectons to apply softmax on each head
+
         """
         b, l, d = x.size()
         return x.view(b, l, self.h, self.d_head).transpose(1,2).contiguous().view(b*self.h, l, self.d_head)
@@ -92,8 +95,7 @@ class MultiHeadAttention(nn.Module):
 
     
 class FeedForward(nn.Module):
-    """
-    Applies position-wise feed forward to inputs
+    """Applies position-wise feed forward to inputs
     
     Args:
         d_model: dimension of model 
@@ -109,6 +111,7 @@ class FeedForward(nn.Module):
         
     Output Shapes:
         out: batch_size x len x d_model
+
     """
     
     def __init__(self, d_model, d_ff, p):
@@ -128,8 +131,7 @@ class FeedForward(nn.Module):
 
     
 class EncoderLayer(nn.Module):
-    """
-    Wraps multi-head attentions and position-wise feed forward into one encoder layer
+    """Wraps multi-head attentions and position-wise feed forward into one encoder layer
     
     Args:
         h:       number of heads
@@ -149,6 +151,7 @@ class EncoderLayer(nn.Module):
     
     Output Shapes:
         out: batch_size x len_query x d_model
+
     """
     
     def __init__(self, h, d_model, p, d_ff):
@@ -163,8 +166,7 @@ class EncoderLayer(nn.Module):
     
     
 class DecoderLayer(nn.Module):
-    """
-    Wraps multi-head attentions and position-wise feed forward into one layer of decoder
+    """Wraps multi-head attentions and position-wise feed forward into one layer of decoder
     
     Args:
         h:       number of heads
@@ -187,6 +189,7 @@ class DecoderLayer(nn.Module):
     
     Output Shapes:
         out: batch_size x len_query x d_model
+        
     """    
     
     def __init__(self, h, d_model, p, d_ff):
