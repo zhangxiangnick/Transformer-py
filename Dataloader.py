@@ -2,7 +2,7 @@ import math
 import torch
 from torch.autograd import Variable
 
-MAX_WORDPIECE_LEN = 512
+MAX_WORDPIECE_LEN = 256
 
 class Dataloader(object):
     """Class to Load Language Pairs and Make Batch
@@ -25,7 +25,7 @@ class Dataloader(object):
                 break            
             src_ids = list(map(int, src_line.strip().split()))
             tgt_ids = list(map(int, tgt_line.strip().split()))
-            if len(src_ids)<=256 and len(tgt_ids)<=256:
+            if len(src_ids)<=MAX_WORDPIECE_LEN and len(tgt_ids)<=MAX_WORDPIECE_LEN:
                 src.append(src_ids)
                 tgt.append(tgt_ids)  
                 nb_pairs += 1
