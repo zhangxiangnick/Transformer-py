@@ -1,6 +1,8 @@
+import math
 import torch
 import torch.nn as nn
-import math
+from torch.autograd import Variable
+
 
 class LayerNorm(nn.Module):
     """Applies layer normalization to last dimension
@@ -25,7 +27,7 @@ class MultiHeadAttention(nn.Module):
 
     Args:
         h:       number of heads
-        d_model: dimention of model
+        d_model: dimension of model
         p:       dropout probabolity  
         
     Params:
@@ -135,7 +137,7 @@ class EncoderLayer(nn.Module):
     
     Args:
         h:       number of heads
-        d_model: dimention of model
+        d_model: dimension of model
         p:       dropout probabolity 
         d_ff:    dimension of feed forward
         
@@ -170,7 +172,7 @@ class DecoderLayer(nn.Module):
     
     Args:
         h:       number of heads
-        d_model: dimention of model
+        d_model: dimension of model
         p:       dropout probabolity 
         d_ff:    dimension of feed forward
         
@@ -202,4 +204,39 @@ class DecoderLayer(nn.Module):
         out = self.multihead_tgt(query, key, value, mask_tgt)
         out = self.multihead_src(out, context, context, mask_src)
         out = self.feedforward(out)
+        return out
+
+class PositionalEncoding(nn.Module):
+    """Adds positional embeddings to standard word embeddings 
+
+    Args:
+        d_model: dimension of model
+        p:       dropout probabolity  
+        len_max: seq length for pre-calculated positional embeddings
+        
+    Inputs Shapes: 
+        word_emb: batch_size x len_seq x d_model 
+        
+    Outputs Shapes:
+        out:   batch_size x len_seq x d_model
+    """
+    def __init__(self, d_model, p, len_max=512):
+        # save a fixed positional embedding matrix up to len_max,
+        # so that no need to recreate it everytime
+        super(PositionalEncoding, self).__init__()
+        nominator = torch.arange(0,len_max).unsqueeze(1)                 # len_max x 1
+        denominator = torch.floor(torch.arange(0, d_model)/2)*2/d_model  
+        denominator = torch.pow(10000, denominator).unsqueeze(0)         # 1 x d_model
+        pos_emb = nominator/denominator                                  # len_max x d_model
+        pos_emb[:, 0::2] = torch.sin(pos_emb[:, 0::2])
+        pos_emb[:, 1::2] = torch.cos(pos_emb[:, 1::2])
+        # wrap in a buffer so that model can be moved to GPU
+        self.register_buffer('pos_emb', pos_emb)
+        self.dropout = nn.Dropout(p)
+        
+    def forward(self, word_emb):
+        len_seq = word_emb.size(1)
+        # positional embeddings is fixed and thus doesn't need gradients
+        out = word_emb + Variable(self.pos_emb[:len_seq, :], requires_grad=False)
+        out = self.dropout(out)
         return out
