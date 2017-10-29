@@ -85,7 +85,7 @@ class MultiHeadAttention(nn.Module):
         attns = torch.bmm(proj_query, proj_key.transpose(1,2))  # batch_size*h x len_query x len_key
         attns = attns / math.sqrt(self.d_head) 
         attns = attns.view(b, self.h, len_query, len_key) 
-        attns = attns.masked_fill_(mask.unsqueeze(1), -float('inf'))
+        attns = attns.masked_fill_(Variable(mask.unsqueeze(1)), -float('inf'))
         attns = self.sm(attns.view(-1, len_key)).view(b*self.h, len_query, len_key)
         
         # apply attns on value

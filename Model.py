@@ -34,14 +34,14 @@ class Transformer(nn.Module):
     def forward(self, src, tgt):
         context = self.word_emb(src)                                  # batch_size x len_src x d_model
         context = self.pos_emb(context)
-        mask_src = src.eq(0).unsqueeze(1)                                            
+        mask_src = src.data.eq(0).unsqueeze(1)                                       
         for _, layer in enumerate(self.encoder):                          
             context = layer(context, context, context, mask_src)      # batch_size x len_src x d_model
         out = self.word_emb(tgt)                                      # batch_size x len_tgt x d_model
         out = self.pos_emb(out)
         len_tgt = tgt.size(1)
-        mask = tgt.eq(0).unsqueeze(1) + self.mask[:len_tgt, :len_tgt] # batch_size x len_tgt x len_tgt
-        mask_tgt = torch.gt(mask, 0)
+        mask_tgt = tgt.data.eq(0).unsqueeze(1) + self.mask[:len_tgt, :len_tgt]
+        mask_tgt = torch.gt(mask_tgt, 0)
         for _, layer in enumerate(self.decoder):
             out = layer(out, out, out, context, mask_tgt, mask_src)   # batch_size x len_tgt x d_model        
         return out
