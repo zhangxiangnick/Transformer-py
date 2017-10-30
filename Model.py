@@ -50,6 +50,5 @@ class Transformer(nn.Module):
         for _, layer in enumerate(self.decoder):
             out = layer(out, out, out, context, mask_tgt, mask_src)   # batch_size x len_tgt x d_model        
         out = self.generator(out)                                     # batch_size x len_tgt x bpe_size
-        out = out.view(-1, self.bpe_size)
-        out = self.logsoftmax(out)        
+        out = self.logsoftmax(out.view(-1, self.bpe_size))        
         return out
