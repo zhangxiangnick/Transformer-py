@@ -12,10 +12,10 @@ class Dataloader(object):
         path: path to the output of Google SentencePiece
 
     """   
-    def __init__(self, path, batch_size, cuda=False, volatile=False):
+    def __init__(self, srcFilename, tgtFilename, batch_size, cuda=False, volatile=False):
         # Need to reload every time because memory error in pickle
-        srcFile = open(path + "train.de.id")
-        tgtFile = open(path + "train.en.id")
+        srcFile = open(srcFilename)
+        tgtFile = open(tgtFilename)
         src = []
         tgt = []
         nb_pairs = 0

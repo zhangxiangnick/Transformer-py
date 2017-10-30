@@ -22,10 +22,15 @@ class Transformer(nn.Module):
     """
     def __init__(self, bpe_size, h, d_model, p, d_ff):
         super(Transformer, self).__init__()
+        self.bpe_size = bpe_size
         self.word_emb = nn.Embedding(bpe_size, d_model, padding_idx=0)
         self.pos_emb = PositionalEncoding(d_model, p)
         self.encoder = nn.ModuleList([EncoderLayer(h, d_model, p, d_ff) for _ in range(6)]) 
         self.decoder = nn.ModuleList([DecoderLayer(h, d_model, p, d_ff) for _ in range(6)])
+        self.generator = nn.Linear(d_model, bpe_size, bias=False)
+        # tie weight between word embedding and generator 
+        self.generator.weight = self.word_emb.weight
+        self.logsoftmax = nn.LogSoftmax()
         # pre-save a mask to avoid future information in self-attentions in decoder
         # save as a buffer, otherwise will need to recreate it and move to GPU during every call
         mask = torch.ByteTensor(np.triu(np.ones((512,512)), k=1).astype('uint8'))
@@ -44,4 +49,7 @@ class Transformer(nn.Module):
         mask_tgt = torch.gt(mask_tgt, 0)
         for _, layer in enumerate(self.decoder):
             out = layer(out, out, out, context, mask_tgt, mask_src)   # batch_size x len_tgt x d_model        
+        out = self.generator(out)                                     # batch_size x len_tgt x bpe_size
+        out = out.view(-1, self.bpe_size)
+        out = self.logsoftmax(out)        
         return out
