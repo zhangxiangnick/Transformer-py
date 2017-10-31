@@ -25,7 +25,9 @@ class Dataloader(object):
             # skip too short lines
             if len(src_ids)<=1 or len(tgt_ids)<=3:
                 continue
-            if len(src_ids)<=256 and len(tgt_ids)<=256:
+            if 0 in src_ids or 0 in tgt_ids:
+                continue
+            if len(src_ids)<=128 and len(tgt_ids)<=128:
                 src.append(src_ids)
                 tgt.append(tgt_ids)  
                 nb_pairs += 1

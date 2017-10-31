@@ -39,13 +39,13 @@ cat dev/newstest2014.en dev/newstest2015.en > dev.en
 cat dev/newstest2014.de dev/newstest2015.de > dev.de
 
 # bpe training and encoding
-spm_train --input=train.en,train.de --model_prefix=de-en_bp3_32000 --vocab_size=32000 --model_type=bpe
-spm_encode --model=de-en_bp3_32000.model --output_format=id < train.de > train.de.id
-spm_encode --model=de-en_bp3_32000.model --output_format=id --extra_options=bos:eos < train.en > train.en.id
-spm_encode --model=de-en_bp3_32000.model --output_format=id < dev.de > dev.de.id
-spm_encode --model=de-en_bp3_32000.model --output_format=id --extra_options=bos:eos < dev.en > dev.en.id
-spm_encode --model=de-en_bp3_32000.model --output_format=id < test/newstest2016.de > test/newstest2016.de.id
-spm_encode --model=de-en_bp3_32000.model --output_format=id --extra_options=bos:eos < test/newstest2016.en > test/newstest2016.en.id
+spm_train --input=train.en,train.de,dev.en,dev.de,test/newstest2016.en,test/newstest2016.de --model_prefix=en-de_bp3_32000 --vocab_size=32000 --model_type=bpe
+spm_encode --model=en-de_bp3_32000.model --output_format=id < train.en > train.en.id
+spm_encode --model=en-de_bp3_32000.model --output_format=id --extra_options=bos:eos < train.de > train.de.id
+spm_encode --model=en-de_bp3_32000.model --output_format=id < dev.en > dev.en.id
+spm_encode --model=en-de_bp3_32000.model --output_format=id --extra_options=bos:eos < dev.de > dev.de.id
+spm_encode --model=en-de_bp3_32000.model --output_format=id < test/newstest2016.en > test/newstest2016.en.id
+spm_encode --model=en-de_bp3_32000.model --output_format=id --extra_options=bos:eos < test/newstest2016.de > test/newstest2016.de.id
 
 
 

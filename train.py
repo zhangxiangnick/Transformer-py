@@ -45,7 +45,7 @@ if __name__ == "__main__":
     
     print("Building Dataloader ...")
     train_path = "/home/ubuntu/translation-data/dev."
-    dataloader = Dataloader(train_path+"de.id", train_path+"en.id", 64, cuda=True)
+    dataloader = Dataloader(train_path+"en.id", train_path+"de.id", 64, cuda=True)
     
     print("Building Model ...")
     model = Transformer(32000, 8, 512, 0.1, 1024).cuda()
