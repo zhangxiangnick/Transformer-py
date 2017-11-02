@@ -209,10 +209,12 @@ class DecoderLayer(nn.Module):
 class PositionalEncoding(nn.Module):
     """Adds positional embeddings to standard word embeddings 
 
+    This matches the original TensorFlow implementation at https://github.com/tensorflow/tensor2tensor/blob/master/tensor2tensor/layers/common_attention.py.
+    
     Args:
         d_model: dimension of model
         p:       dropout probabolity  
-        len_max: seq length for pre-calculated positional embeddings
+        len_max: max seq length for pre-calculated positional embeddings
         
     Inputs Shapes: 
         word_emb: batch_size x len_seq x d_model 
@@ -224,19 +226,18 @@ class PositionalEncoding(nn.Module):
         # save a fixed positional embedding matrix up to len_max,
         # so that no need to recreate it everytime
         super(PositionalEncoding, self).__init__()
-        nominator = torch.arange(0,len_max).unsqueeze(1)                 # len_max x 1
-        denominator = torch.floor(torch.arange(0, d_model)/2)*2/d_model  
-        denominator = torch.pow(10000, denominator).unsqueeze(0)         # 1 x d_model
-        pos_emb = nominator/denominator                                  # len_max x d_model
-        pos_emb[:, 0::2] = torch.sin(pos_emb[:, 0::2])
-        pos_emb[:, 1::2] = torch.cos(pos_emb[:, 1::2])
+        position = torch.arange(0,len_max)                      
+        num_timescales = d_model // 2
+        log_timescale_increment = math.log(10000) / (num_timescales-1)
+        inv_timescales = torch.exp(torch.arange(0, num_timescales) * -log_timescale_increment)
+        scaled_time = position.unsqueeze(1) * inv_timescales.unsqueeze(0)
+        pos_emb = torch.cat((torch.sin(scaled_time), torch.cos(scaled_time)), 1)
         # wrap in a buffer so that model can be moved to GPU
         self.register_buffer('pos_emb', pos_emb)
         self.dropout = nn.Dropout(p)
         
     def forward(self, word_emb):
         len_seq = word_emb.size(1)
-        # positional embeddings is fixed and thus doesn't need gradients
-        out = word_emb + Variable(self.pos_emb[:len_seq, :], requires_grad=False)
+        out = word_emb + Variable(self.pos_emb[:len_seq, :])
         out = self.dropout(out)
         return out
