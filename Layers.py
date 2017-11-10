@@ -58,6 +58,7 @@ class MultiHeadAttention(nn.Module):
         self.fc_concat = nn.Linear(h*self.d_head, d_model, bias=False)
         self.sm = nn.Softmax()
         self.dropout = nn.Dropout(p)
+        self.attn_dropout = nn.Dropout(p)
         self.layernorm = LayerNorm(d_model)
       
     def _prepare_proj(self, x):
@@ -86,7 +87,8 @@ class MultiHeadAttention(nn.Module):
         attns = attns / math.sqrt(self.d_head) 
         attns = attns.view(b, self.h, len_query, len_key) 
         attns = attns.masked_fill_(Variable(mask.unsqueeze(1)), -float('inf'))
-        attns = self.sm(attns.view(-1, len_key)).view(b*self.h, len_query, len_key)
+        attns = self.attn_dropout(self.sm(attns.view(-1, len_key)))
+        attns = attns.view(b*self.h, len_query, len_key)
         
         # apply attns on value
         out = torch.bmm(attns, proj_value)      # batch_size*h x len_query x d_head
