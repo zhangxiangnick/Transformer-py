@@ -5,8 +5,9 @@ import torch.nn as nn
 from torch.nn.utils import clip_grad_norm
 from Model import Transformer
 from Dataloader import Dataloader
+from Optimizer import TransformerOptimizer
 
-def trainEpoch(epoch, model, criterion, dataloader, optim, print_batch=2):
+def trainEpoch(epoch, model, criterion, dataloader, optim, print_batch=100):
     model.train()
     epoch_loss, epoch_words, epoch_corrects = 0, 0, 0
     batch_loss, batch_words, batch_corrects = 0, 0, 0
@@ -17,9 +18,8 @@ def trainEpoch(epoch, model, criterion, dataloader, optim, print_batch=2):
         # leave out the last <EOS>
         out = model(src_batch, tgt_batch[:, :-1])   
         tgt_words = tgt_batch[:,1:].contiguous().view(-1)
-        nllloss = criterion(out, tgt_words) / tgt_batch.size(0)
+        nllloss = criterion(out, tgt_words) 
         nllloss.backward()
-        clip_grad_norm(model.parameters(), max_norm=5)
         optim.step()
         preds = torch.max(out,1)[1]
         corrects = preds.data.eq(tgt_words.data).masked_select(tgt_words.data.ne(0))  
@@ -48,15 +48,16 @@ if __name__ == "__main__":
     dataloader = Dataloader(train_path+"en.id", train_path+"de.id", 64, cuda=True)
     
     print("Building Model ...")
-    model = Transformer(32000, 8, 512, 0.1, 1024).cuda()
+    model = Transformer(bpe_size=32000, h=8, d_model=512, p=0.1, d_ff=1024).cuda()
     nllloss_weights = torch.ones(32000)
     nllloss_weights[0] = 0      
     criterion = nn.NLLLoss(nllloss_weights, size_average=False).cuda()
-    optim = torch.optim.SGD(model.parameters(), lr=1)
-    
+    base_optim = torch.optim.Adam(model.parameters(), betas=(0.9, 0.98), eps=1e-09)
+    optim = TransformerOptimizer(base_optim, warmup_steps=8000, d_model=512)
+
     print("Start Training ...")
     for epoch in range(10):
         if epoch > 1:
-            dataloader.shuffle()
+            dataloader.shuffle(1028)
         train_acc, train_ppl= trainEpoch(epoch, model, criterion, dataloader, optim)
-        print("[Train] Accuracy: %6.2f, Perplexity: %6.2f" % (train_acc, train_ppl))
+        print("[Train][Epoch %2d] Accuracy: %6.2f, Perplexity: %6.2f" % (epoch+1, train_acc, train_ppl))
