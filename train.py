@@ -2,7 +2,6 @@ import math
 import time
 import torch
 import torch.nn as nn
-from torch.nn.utils import clip_grad_norm
 from Model import Transformer
 from Dataloader import Dataloader
 from Optimizer import TransformerOptimizer
