@@ -48,5 +48,7 @@ class Transformer(nn.Module):
         mask_tgt = tgt.data.eq(0).unsqueeze(1) + self.mask[:len_tgt, :len_tgt]
         mask_tgt = torch.gt(mask_tgt, 0)
         for _, layer in enumerate(self.decoder):
-            out = layer(out, out, out, context, mask_tgt, mask_src)   # batch_size x len_tgt x d_model             
+            out = layer(out, out, out, context, mask_tgt, mask_src)   # batch_size x len_tgt x d_model   
+        out = self.generator(out)                                     # batch_size x len_tgt x bpe_size
+        out = self.logsoftmax(out.view(-1, self.bpe_size))            
         return out

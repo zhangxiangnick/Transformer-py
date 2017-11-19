@@ -17,27 +17,15 @@ def trainEpoch(epoch, model, criterion, dataloader, optim, print_batch=10):
         model.zero_grad()
         # leave out the last <EOS>
         out = model(src_batch, tgt_batch[:, :-1])   
-        # length of tgt as training input
-        len_tgt_train = tgt_batch.size(1) - 1
-        # calculate at most 32 positions per slice to reduce memory usuage
-        slice_size = 32
-        for start_pos in range(0, len_tgt_train, slice_size):
-            slice_out = out[:, start_pos:(start_pos+slice_size), :]
-            slice_out = model.generator(slice_out)
-            slice_out = model.logsoftmax(slice_out.view(-1, model.bpe_size))
-            # shift tgt by one for loss calculation
-            tgt_words = tgt_batch[:, (start_pos+1):(start_pos+1+slice_size)].contiguous().view(-1)
-            loss = criterion(slice_out, tgt_words) / batch_size
-            if start_pos+slice_size >= len_tgt_train:  # last slice in this batch
-                loss.backward()
-            else:
-                loss.backward(retain_graph=True)
-            preds = torch.max(slice_out,1)[1]
-            corrects = preds.data.eq(tgt_words.data).masked_select(tgt_words.data.ne(0))
-            batch_loss += loss.data[0]
-            batch_words += len(corrects)
-            batch_corrects += corrects.sum()
+        tgt_words = tgt_batch[:,1:].contiguous().view(-1)      
+        loss = criterion(out, tgt_words)    
+        loss.backward()
         optim.step()
+        preds = torch.max(out,1)[1]        
+        corrects = preds.data.eq(tgt_words.data).masked_select(tgt_words.data.ne(0))          
+        batch_loss += loss.data[0]     
+        batch_words += len(corrects)      
+        batch_corrects += corrects.sum()
         if (i+1)%print_batch==0 or (i+1)==len(dataloader):
             print("Epoch %2d, Batch %6d/%6d, Acc: %6.2f, Plp: %8.2f, %4.0f seconds" % 
                  (epoch+1, i+1, len(dataloader), batch_corrects/batch_words, 
