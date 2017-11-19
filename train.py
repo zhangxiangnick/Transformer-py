@@ -83,7 +83,7 @@ if __name__ == "__main__":
     torch.cuda.manual_seed(123)
     
     print("Building Dataloader ...")
-    train_path = "/home/ubuntu/translation-data/dev."
+    train_path = "/home/ubuntu/translation-data/train."
     traindataloader = Dataloader(train_path+"en.id", train_path+"de.id", 96, cuda=True)
     dev_path = "/home/ubuntu/translation-data/dev."
     devdataloader = Dataloader(dev_path+"en.id", dev_path+"de.id", 96, cuda=True, volatile=True)    
@@ -100,7 +100,7 @@ if __name__ == "__main__":
     for epoch in range(10):
         if epoch > 1:
             dataloader.shuffle(1024)
-        train_acc, train_ppl= trainEpoch(epoch, model, criterion, dataloader, optim)
+        train_acc, train_ppl= trainEpoch(epoch, model, criterion, traindataloader, optim)
         print("[Train][Epoch %2d] Accuracy: %6.2f, Perplexity: %6.2f" % (epoch+1, train_acc, train_ppl))
         eval_acc, eval_ppl = evaluate(epoch, model, criterion, devdataloader)
         print("[Eval][Epoch %2d] Accuracy: %6.2f, Perplexity: %6.2f" % (epoch+1, eval_acc, eval_ppl))
