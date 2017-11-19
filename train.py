@@ -45,23 +45,13 @@ def evaluate(epoch, model, criterion, dataloader):
     for i in range(len(dataloader)):
         src_batch, tgt_batch = dataloader[i]
         out = model(src_batch, tgt_batch[:, :-1])
-        # length of tgt as training input
-        len_tgt_train = tgt_batch.size(1) - 1   
-        # calculate at most 32 positions per slice to reduce memory usuage
-        slice_size = 32
-        loss = 0
-        for start_pos in range(0, len_tgt_train, slice_size):
-            slice_out = out[:, start_pos:(start_pos+slice_size), :]
-            slice_out = model.generator(slice_out)        
-            slice_out = model.logsoftmax(slice_out.view(-1, model.bpe_size))
-            # shift tgt by one for loss calculation
-            tgt_words = tgt_batch[:, (start_pos+1):(start_pos+1+slice_size)].contiguous().view(-1) 
-            loss = criterion(slice_out, tgt_words) 
-            preds = torch.max(slice_out,1)[1]
-            corrects = preds.data.eq(tgt_words.data).masked_select(tgt_words.data.ne(0))
-            eval_loss += loss.data[0]
-            eval_words += len(corrects)
-            eval_corrects += corrects.sum()
+        tgt_words = tgt_batch[:,1:].contiguous().view(-1)      
+        loss = criterion(out, tgt_words)    
+        preds = torch.max(out,1)[1]        
+        corrects = preds.data.eq(tgt_words.data).masked_select(tgt_words.data.ne(0))          
+        eval_loss += loss.data[0]     
+        eval_words += len(corrects)      
+        eval_corrects += corrects.sum()
     eval_accuracy = eval_corrects/eval_words
     eval_perplexity = math.exp(eval_loss/eval_words)
     return eval_accuracy, eval_perplexity
