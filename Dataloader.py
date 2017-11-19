@@ -27,7 +27,7 @@ class Dataloader(object):
                 continue
             if 0 in src_ids or 0 in tgt_ids:
                 continue
-            if len(src_ids)<=128 and len(tgt_ids)<=128:
+            if len(src_ids)<=64 and len(tgt_ids)<=64:
                 src.append(src_ids)
                 tgt.append(tgt_ids)  
                 nb_pairs += 1
