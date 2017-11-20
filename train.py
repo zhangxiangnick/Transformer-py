@@ -2,6 +2,7 @@ import math
 import time
 import torch
 import torch.nn as nn
+from torch.autograd import Variable
 from Model import Transformer
 from Dataloader import Dataloader
 from Optimizer import TransformerOptimizer
@@ -15,9 +16,13 @@ def trainEpoch(epoch, model, criterion, dataloader, optim, print_batch=10):
     for i in range(len(dataloader)):
         src_batch, tgt_batch = dataloader[i]
         model.zero_grad()
-        # leave out the last <EOS>
-        out = model(src_batch, tgt_batch[:, :-1])   
-        tgt_words = tgt_batch[:,1:].contiguous().view(-1)      
+        # leave out the last <EOS> in target
+        out = model(src_batch, tgt_batch[:,:-1])  
+        # label smoothing 
+        # randomly set 10% target labels to 0, which doesn't contribute to loss
+        labelsmoothing_mask = torch.le(torch.zeros(tgt_batch[:,1:].size()).uniform_(), 0.1).cuda()
+        tgt_words = tgt_batch[:,1:].data.clone().masked_fill_(labelsmoothing_mask, 0)
+        tgt_words = Variable(tgt_words.contiguous().view(-1))    
         loss = criterion(out, tgt_words)    
         loss.backward()
         optim.step()
