@@ -23,7 +23,7 @@ def trainEpoch(epoch, model, criterion, dataloader, optim, print_batch=10):
         labelsmoothing_mask = torch.le(torch.zeros(tgt_batch[:,1:].size()).uniform_(), 0.1).cuda()
         tgt_words = tgt_batch[:,1:].data.clone().masked_fill_(labelsmoothing_mask, 0)
         tgt_words = Variable(tgt_words.contiguous().view(-1))    
-        loss = criterion(out, tgt_words)    
+        loss = criterion(out, tgt_words) / batch_size   
         loss.backward()
         optim.step()
         preds = torch.max(out,1)[1]        
@@ -77,7 +77,7 @@ if __name__ == "__main__":
     nllloss_weights[0] = 0      
     criterion = nn.NLLLoss(nllloss_weights, size_average=False).cuda()
     base_optim = torch.optim.Adam(model.parameters(), betas=(0.9, 0.98), eps=1e-09)
-    optim = TransformerOptimizer(base_optim, warmup_steps=16000, d_model=512)
+    optim = TransformerOptimizer(base_optim, warmup_steps=32000, d_model=512)
 
     print("Start Training ...")
     for epoch in range(10):
