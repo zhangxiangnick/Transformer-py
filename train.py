@@ -73,9 +73,8 @@ if __name__ == "__main__":
     
     print("Building Model ...")
     model = Transformer(bpe_size=32000, h=8, d_model=512, p=0.1, d_ff=1024).cuda()
-    nllloss_weights = torch.ones(32000)
-    nllloss_weights[0] = 0      
-    criterion = nn.NLLLoss(nllloss_weights, size_average=False).cuda()
+    nllloss_weights = torch.ones(32000)   
+    criterion = nn.NLLLoss(nllloss_weights, size_average=False, ignore_index=0).cuda()
     base_optim = torch.optim.Adam(model.parameters(), betas=(0.9, 0.98), eps=1e-09)
     optim = TransformerOptimizer(base_optim, warmup_steps=32000, d_model=512)
 

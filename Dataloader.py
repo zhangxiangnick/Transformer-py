@@ -22,12 +22,9 @@ class Dataloader(object):
                 break            
             src_ids = list(map(int, src_line.strip().split()))
             tgt_ids = list(map(int, tgt_line.strip().split()))
-            # skip too short lines
-            if len(src_ids)<=1 or len(tgt_ids)<=3:
-                continue
             if 0 in src_ids or 0 in tgt_ids:
                 continue
-            if len(src_ids)<=64 and len(tgt_ids)<=64:
+            if len(src_ids)>0 and len(src_ids)<=64 and len(tgt_ids)>0 and len(tgt_ids)<=64:
                 src.append(src_ids)
                 tgt.append(tgt_ids)  
                 nb_pairs += 1
