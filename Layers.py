@@ -87,7 +87,10 @@ class MultiHeadAttention(nn.Module):
         attns = attns / math.sqrt(self.d_head) 
         attns = attns.view(b, self.h, len_query, len_key) 
         attns = attns.masked_fill_(Variable(mask.unsqueeze(1)), -float('inf'))
-        attns = self.attn_dropout(self.sm(attns.view(-1, len_key)))
+        attns = self.sm(attns.view(-1, len_key))
+        # return mean attention from all heads as coverage 
+        coverage = torch.mean(attns.view(b, self.h, len_query, len_key), dim=1)
+        attns = self.attn_dropout(attns)
         attns = attns.view(b*self.h, len_query, len_key)
         
         # apply attns on value
@@ -95,7 +98,7 @@ class MultiHeadAttention(nn.Module):
         out = out.view(b, self.h, len_query, self.d_head).transpose(1,2).contiguous() 
         out = self.fc_concat(out.view(b, len_query, self.h*self.d_head))
         out = self.layernorm(query + self.dropout(out))   
-        return out
+        return out, coverage
 
     
 class FeedForward(nn.Module):
@@ -164,7 +167,7 @@ class EncoderLayer(nn.Module):
         self.feedforward = FeedForward(d_model, d_ff, p)
     
     def forward(self, query, key, value, mask):
-        out = self.multihead(query, key, value, mask)
+        out, _ = self.multihead(query, key, value, mask)
         out = self.feedforward(out)
         return out
     
@@ -203,10 +206,10 @@ class DecoderLayer(nn.Module):
         self.feedforward = FeedForward(d_model, d_ff, p)
     
     def forward(self, query, key, value, context, mask_tgt, mask_src):
-        out = self.multihead_tgt(query, key, value, mask_tgt)
-        out = self.multihead_src(out, context, context, mask_src)
+        out, _ = self.multihead_tgt(query, key, value, mask_tgt)
+        out, coverage = self.multihead_src(out, context, context, mask_src)
         out = self.feedforward(out)
-        return out
+        return out, coverage
 
 class PositionalEncoding(nn.Module):
     """Adds positional embeddings to standard word embeddings 
