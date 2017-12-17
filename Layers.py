@@ -43,8 +43,9 @@ class MultiHeadAttention(nn.Module):
         mask:  batch_size x len_query x len_key or broadcastable 
         
     Outputs Shapes:
-        out:   batch_size x len_query x d_model
-
+        out:      batch_size x len_query x d_model
+        coverage: batch_size x len_query x len_key
+        
     """
     
     def __init__(self, h, d_model, p):
@@ -195,7 +196,8 @@ class DecoderLayer(nn.Module):
         mask_src: batch_size x len_query x len_src or broadcastable 
     
     Output Shapes:
-        out: batch_size x len_query x d_model
+        out:      batch_size x len_query x d_model
+        coverage: batch_size x len_query x len_key
         
     """    
     
@@ -226,6 +228,7 @@ class PositionalEncoding(nn.Module):
         
     Outputs Shapes:
         out:   batch_size x len_seq x d_model
+        
     """
     def __init__(self, d_model, p, len_max=512):
         # save a fixed positional embedding matrix up to len_max,

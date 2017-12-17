@@ -13,12 +13,6 @@ class Transformer(nn.Module):
         p:          dropout probabolity 
         d_ff:       dimension of feed forward
         
-    Inputs Shapes: 
-        src: batch_size x len_src  
-        tgt: batch_size x len_tgt
-        
-    Outputs Shapes:
-        out:   batch_size x len_tgt x bpe_size
     """
     def __init__(self, bpe_size, h, d_model, p, d_ff):
         super(Transformer, self).__init__()
@@ -57,6 +51,16 @@ class Transformer(nn.Module):
         return out, coverage
         
     def forward(self, src, tgt):
+        """
+        Inputs Shapes: 
+            src: batch_size x len_src  
+            tgt: batch_size x len_tgt
+        
+        Outputs Shapes:
+            out:      batch_size x len_tgt x bpe_size
+            coverage: batch_size x len_tgt x len_src
+            
+        """
         context, mask_src = self.encode(src)
         out, coverage = self.decode(tgt, context, mask_src)            
         return out, coverage
