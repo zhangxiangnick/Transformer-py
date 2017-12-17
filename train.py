@@ -17,7 +17,7 @@ def trainEpoch(epoch, model, criterion, dataloader, optim, print_batch=10):
         src_batch, tgt_batch = dataloader[i]
         model.zero_grad()
         # leave out the last <EOS> in target
-        out = model(src_batch, tgt_batch[:,:-1])  
+        out, _ = model(src_batch, tgt_batch[:,:-1])  
         # label smoothing 
         # randomly set 10% target labels to 0, which doesn't contribute to loss
         labelsmoothing_mask = torch.le(torch.zeros(tgt_batch[:,1:].size()).uniform_(), 0.1).cuda()

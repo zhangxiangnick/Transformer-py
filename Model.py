@@ -36,12 +36,15 @@ class Transformer(nn.Module):
         mask = torch.ByteTensor(np.triu(np.ones((512,512)), k=1).astype('uint8'))
         self.register_buffer('mask', mask)
         
-    def forward(self, src, tgt):
+    def encode(self, src):
         context = self.word_emb(src)                                  # batch_size x len_src x d_model
         context = self.pos_emb(context)
         mask_src = src.data.eq(0).unsqueeze(1)                                       
         for _, layer in enumerate(self.encoder):                          
             context = layer(context, context, context, mask_src)      # batch_size x len_src x d_model
+        return context, mask_src
+    
+    def decode(self, tgt, context, mask_src):
         out = self.word_emb(tgt)                                      # batch_size x len_tgt x d_model
         out = self.pos_emb(out)
         len_tgt = tgt.size(1)
@@ -50,5 +53,10 @@ class Transformer(nn.Module):
         for _, layer in enumerate(self.decoder):
             out, coverage = layer(out, out, out, context, mask_tgt, mask_src)  # batch_size x len_tgt x d_model   
         out = self.generator(out)                                              # batch_size x len_tgt x bpe_size
-        out = self.logsoftmax(out.view(-1, self.bpe_size))            
+        out = self.logsoftmax(out.view(-1, self.bpe_size))          
+        return out, coverage
+        
+    def forward(self, src, tgt):
+        context, mask_src = self.encode(src)
+        out, coverage = self.decode(tgt, context, mask_src)            
         return out, coverage
