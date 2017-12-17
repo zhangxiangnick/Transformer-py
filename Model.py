@@ -57,7 +57,7 @@ class Transformer(nn.Module):
             tgt: batch_size x len_tgt
         
         Outputs Shapes:
-            out:      batch_size x len_tgt x bpe_size
+            out:      batch_size*len_tgt x bpe_size
             coverage: batch_size x len_tgt x len_src
             
         """
