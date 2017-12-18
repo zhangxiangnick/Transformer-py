@@ -1,10 +1,12 @@
 import os
 import math
+import pandas as pd
+import seaborn as sns
 import torch
 from torch.autograd import Variable
 
 class Translator(object):
-    """Class to translate sentence using pre-trained model.
+    """Class to generate translations from beam search and to plot attention heatmap.
     
     Args:
         model:          pre-trained translation model with encode and decode methods
@@ -21,6 +23,7 @@ class Translator(object):
         self.alpha = alpha
         self.beta = beta
         self.max_len = max_len
+        self.bpe_model_path = bpe_model_path
         self.encode_cmd = "spm_encode --model=" + bpe_model_path + " --output_format=id"
         self.decode_cmd = "spm_decode --model=" + bpe_model_path + " --input_format=id"
         self.model.eval()
@@ -29,17 +32,19 @@ class Translator(object):
         encode_cmd = "echo '" + word_input + "' |" + self.encode_cmd
         id_output = os.popen(encode_cmd).read()[:-1] # drop the \n at the end
         id_output = [int(id) for id in id_output.split()]
-        id_output = Variable(torch.LongTensor(id_output).unsqueeze(0), volatile=True)
         return id_output
     
     def id2word(self, id_input):
+        if id_input == "2":
+            return "</s>"
         decode_cmd = "echo '" + id_input + "' |" + self.decode_cmd
-        word_output = os.popen(decode_cmd).read()[:-1]
+        word_output = os.popen(decode_cmd).read()[:-1] # drop the \n at the end
         return word_output
-    
+     
     def translate(self, source):
         logLikelihoods = []
         preds = []
+        atten_probs = []
         coverage_penalties = []
         beam_size = self.beam_size
         remaining_beams = self.beam_size
@@ -47,6 +52,8 @@ class Translator(object):
         
         # generate context from source
         src_id = self.word2id(source)
+        src_pieces = [self.id2word(str(i)) for i in src_id]
+        src_id = Variable(torch.LongTensor(src_id).unsqueeze(0), volatile=True)
         context, mask_src = self.model.encode(src_id)
         
         # predict the first word
@@ -60,7 +67,7 @@ class Translator(object):
         
         # continus to predict next work until <EOS>
         step = 1
-        while step <= self.max_len and remaining_beams > 0:
+        while step <= self.max_len and remaining_beams>0:
             step += 1
             out, coverage = self.model.decode(decode_input, context, mask_src) 
             out = out.view(remaining_beams, -1, self.model.bpe_size)
@@ -76,6 +83,7 @@ class Translator(object):
                 logLikelihoods.append(scores[idx].data[0])
                 preds.append(decode_input[idx,:].data.tolist())
                 atten_prob = torch.sum(coverage[idx,:,:], dim=0)
+                atten_probs.append(coverage[idx,:,:])
                 coverage_penalty = torch.log(atten_prob.masked_select(atten_prob.le(1)))
                 coverage_penalty = self.beta * torch.sum(coverage_penalty).data[0]
                 coverage_penalties.append(coverage_penalty)       
@@ -89,7 +97,14 @@ class Translator(object):
         len_penalties = [math.pow(len(pred), self.alpha) for pred in preds]
         final_scores = [logLikelihoods[i]/len_penalties[i] + coverage_penalties[i] for i in range(beam_size)]
         sorted_scores_arg = sorted(range(beam_size), key=lambda i:-final_scores[i])
+        best_beam = sorted_scores_arg[0]
+        tgt_id = ' '.join(map(str, preds[best_beam]))
+        target = self.id2word(tgt_id)
+        tgt_pieces = [self.id2word(str(i)) for i in preds[best_beam]]
+        attn = [atten_probs[best_beam], src_pieces, tgt_pieces]
+        return target, attn 
     
-        target_id = ' '.join(map(str,preds[sorted_scores_arg[0]]))
-        target = self.id2word(target_id)
-        return target
+    def attention_heatmap(self, attn):
+        """Draw attention heatmap using attn returned by translate()."""
+        df = pd.DataFrame(atten[0].data.cpu().numpy(), index=atten[2][1:], columns=atten[1])
+        sns.heatmap(df, linewidths=.005, xticklabels=1, yticklabels=1)   
