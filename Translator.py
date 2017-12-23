@@ -29,7 +29,8 @@ class Translator(object):
         self.model.eval()
         
     def word2id(self, word_input):
-        encode_cmd = "echo '" + word_input + "' |" + self.encode_cmd
+        word_input = word_input.replace('"', r'\"')
+        encode_cmd = 'echo "' + word_input + '" |' + self.encode_cmd
         id_output = os.popen(encode_cmd).read()[:-1] # drop the \n at the end
         id_output = [int(id) for id in id_output.split()]
         return id_output
