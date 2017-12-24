@@ -7,7 +7,7 @@ from Model import Transformer
 from Dataloader import Dataloader
 from Optimizer import TransformerOptimizer
 
-def trainEpoch(epoch, model, criterion, dataloader, optim, print_batch=10):
+def trainEpoch(epoch, model, criterion, dataloader, optim, print_batch=20):
     model.train()
     epoch_loss, epoch_words, epoch_corrects = 0, 0, 0
     batch_loss, batch_words, batch_corrects = 0, 0, 0
@@ -79,9 +79,13 @@ if __name__ == "__main__":
     optim = TransformerOptimizer(base_optim, warmup_steps=32000, d_model=512)
 
     print("Start Training ...")
-    for epoch in range(10):
+    for epoch in range(60):
         if epoch > 0:
             traindataloader.shuffle(1024)
+        if epoch == 20:
+            optim.init_lr = 0.5 * optim.init_lr 
+        if epoch == 40:
+            optim.init_lr = 0.1 * optim.init_lr 
         train_acc, train_ppl= trainEpoch(epoch, model, criterion, traindataloader, optim)
         print("[Train][Epoch %2d] Accuracy: %6.2f, Perplexity: %6.2f" % (epoch+1, train_acc, train_ppl))
         eval_acc, eval_ppl = evaluate(epoch, model, criterion, devdataloader)
