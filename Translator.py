@@ -17,8 +17,9 @@ class Translator(object):
         max_len:        max length for hypothesis
               
     """
-    def __init__(self, model, bpe_model_path, beam_size=64, alpha=0.2, beta=0.1, max_len=64):
+    def __init__(self, model, bpe_model_path, beam_size=64, alpha=0.1, beta=0.3, max_len=64):
         self.model = model
+        self.bpe_size = model.bpe_size
         self.beam_size = beam_size
         self.alpha = alpha
         self.beta = beta
@@ -54,15 +55,15 @@ class Translator(object):
         # generate context from source
         src_id = self.word2id(source)
         src_pieces = [self.id2word(str(i)) for i in src_id]
-        src_id = Variable(torch.LongTensor(src_id).unsqueeze(0), volatile=True)
+        src_id = Variable(torch.LongTensor(src_id).unsqueeze(0).cuda(), volatile=True)
         context, mask_src = self.model.encode(src_id)
         
         # predict the first word
-        decode_input = Variable(torch.LongTensor([1]).unsqueeze(1))
+        decode_input = Variable(torch.LongTensor([1]).unsqueeze(1).cuda())
         out, coverage = self.model.decode(decode_input, context, mask_src)
         scores, scores_id = out.view(-1).topk(beam_size)
-        beam_index = scores_id / self.model.bpe_size
-        pred_id = (scores_id - beam_index*self.model.bpe_size).view(beam_size, -1)
+        beam_index = scores_id / self.bpe_size
+        pred_id = (scores_id - beam_index*self.bpe_size).view(beam_size, -1)
         decode_input = torch.cat((decode_input.repeat(beam_size ,1), pred_id), 1)
         context = context.repeat(beam_size, 1, 1)
         
@@ -71,11 +72,11 @@ class Translator(object):
         while step <= self.max_len and remaining_beams>0:
             step += 1
             out, coverage = self.model.decode(decode_input, context, mask_src) 
-            out = out.view(remaining_beams, -1, self.model.bpe_size)
+            out = out.view(remaining_beams, -1, self.bpe_size)
             out = scores.unsqueeze(1) + out[:, -1, :]
             scores, scores_id = out.view(-1).topk(remaining_beams)
-            beam_id = scores_id / self.model.bpe_size
-            pred_id = (scores_id - beam_id*model.bpe_size).view(remaining_beams, -1)
+            beam_id = scores_id / self.bpe_size
+            pred_id = (scores_id - beam_id*self.bpe_size).view(remaining_beams, -1)
             decode_input = torch.cat((decode_input[beam_id], pred_id), 1) 
             # remove finished beams
             finished_index = decode_input[:, -1].eq(EOS_id).data.nonzero().squeeze()
@@ -96,8 +97,8 @@ class Translator(object):
         
         # normalize the final scores by length and coverage 
         len_penalties = [math.pow(len(pred), self.alpha) for pred in preds]
-        final_scores = [logLikelihoods[i]/len_penalties[i] + coverage_penalties[i] for i in range(beam_size)]
-        sorted_scores_arg = sorted(range(beam_size), key=lambda i:-final_scores[i])
+        final_scores = [logLikelihoods[i]/len_penalties[i] + coverage_penalties[i] for i in range(len(preds))]
+        sorted_scores_arg = sorted(range(len(preds)), key=lambda i:-final_scores[i])
         best_beam = sorted_scores_arg[0]
         tgt_id = ' '.join(map(str, preds[best_beam]))
         target = self.id2word(tgt_id)
@@ -107,5 +108,5 @@ class Translator(object):
     
     def attention_heatmap(self, attn):
         """Draw attention heatmap using attn returned by translate()."""
-        df = pd.DataFrame(atten[0].data.cpu().numpy(), index=atten[2][1:], columns=atten[1])
+        df = pd.DataFrame(attn[0].data.cpu().numpy(), index=attn[2][1:], columns=attn[1])
         sns.heatmap(df, linewidths=.005, xticklabels=1, yticklabels=1)   
