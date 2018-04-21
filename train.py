@@ -49,7 +49,7 @@ def evaluate(epoch, model, criterion, dataloader):
     eval_loss, eval_words, eval_corrects = 0, 0, 0
     for i in range(len(dataloader)):
         src_batch, tgt_batch = dataloader[i]
-        out = model(src_batch, tgt_batch[:, :-1])
+        out, _ = model(src_batch, tgt_batch[:, :-1])
         tgt_words = tgt_batch[:,1:].contiguous().view(-1)      
         loss = criterion(out, tgt_words)    
         preds = torch.max(out,1)[1]        
